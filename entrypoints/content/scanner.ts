@@ -1,3 +1,5 @@
+import { executeCodeBlockWorkflow } from './runner-workflow';
+
 export interface StreamingDebouncer {
   notifyMutation: () => void;
   cancel: () => void;
@@ -75,6 +77,11 @@ export class DOMScanner {
       const button = document.createElement('button');
       button.className = 'omni-run-btn';
       button.innerHTML = `<span>▶</span> Run in WASM`;
+
+      button.addEventListener('click', (e) => {
+        e.stopPropagation();
+        executeCodeBlockWorkflow(target, shadowRoot);
+      });
 
       shadowRoot.appendChild(style);
       shadowRoot.appendChild(button);
