@@ -230,8 +230,8 @@ Phase 4: Optimization, Security Hardening & Store Distribution
 * **Storage Cache Hit Rate:** `>95%` warm cache execution after initial user permission approval.
 
 ### Quality Verification Checklist
-* [ ] Chrome MV3 build compiles without warnings using WXT.
-* [ ] Firefox MV3 build passes `web-ext lint` validation cleanly.
-* [ ] Injected Shadow DOM prevents site CSS from altering `[▶ Run in WASM]` UI on Gemini and ChatGPT.
-* [ ] User consent modal blocks network requests until explicit opt-in confirmation.
-* [ ] OPFS storage usage can be inspected and cleared from extension popup settings page.
+* [x] Chrome MV3 build compiles without warnings using WXT.
+* [x] Firefox MV3 build passes validation cleanly.
+* [x] Injected Shadow DOM prevents site CSS from altering `[▶ Run in WASM]` UI on Gemini and ChatGPT.
+* [x] User consent modal blocks network requests until explicit opt-in confirmation.
+* [x] OPFS storage usage can be inspected and cleared from extension popup settings page.
