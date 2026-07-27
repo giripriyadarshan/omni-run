@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Omni-Run Dashboard</title>
+  <style>
+    body {
+      width: 320px;
+      margin: 0;
+      padding: 16px;
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    .popup-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .popup-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 0;
+      color: #38bdf8;
+    }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .card-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #94a3b8;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+    #storage-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: #f1f5f9;
+    }
+    .btn-action {
+      width: 100%;
+      padding: 8px 12px;
+      background: #ef4444;
+      color: #ffffff;
+      font-weight: 600;
+      font-size: 13px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: opacity 0.15s ease;
+    }
+    .btn-action:hover {
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <div id="popup-app">
+    <div class="popup-header">
+      <h2 class="popup-title">Omni-Run Dashboard</h2>
+    </div>
+    <div class="card">
+      <div class="card-title">OPFS Storage Quota</div>
+      <div id="storage-text">Loading...</div>
+    </div>
+    <button id="btn-clear-opfs" class="btn-action">Clear Storage Cache</button>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
