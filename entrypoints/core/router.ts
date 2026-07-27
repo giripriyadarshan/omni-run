@@ -1,3 +1,5 @@
+import { AILanguageDetector, AIDetectorOptions } from './ai-detector';
+
 export type ExecutionTier = 'tier1' | 'tier2';
 export type ExecutionEngine = 'pyodide' | 'quickjs' | 'container2wasm';
 
@@ -8,12 +10,43 @@ export interface AnalysisResult {
 }
 
 export class TierRouter {
+  private detector: AILanguageDetector;
+
+  constructor() {
+    this.detector = new AILanguageDetector();
+  }
+
   /**
    * Analyzes code snippet content and optional CSS class hint to determine language & execution tier.
+   * Supports AI-assisted language classification via Built-in AI or BYOK Gemini API options.
    */
-  public analyzeCode(code: string, hintClass: string = ''): AnalysisResult {
-    const lang = this.detectLanguage(code, hintClass);
+  public analyzeCode(
+    code: string,
+    hintClass: string = '',
+    options: AIDetectorOptions = {}
+  ): AnalysisResult | Promise<AnalysisResult> {
+    // Fast path: if options has async requirements or if called as async
+    const isAsync = options.apiKey || options.preferredMode === 'builtin' || options.preferredMode === 'byok';
 
+    if (isAsync) {
+      return this.analyzeCodeAsync(code, hintClass, options);
+    }
+
+    // Synchronous fallback
+    const lang = this.detectLanguageSync(code, hintClass);
+    return this.mapLanguageToTier(lang);
+  }
+
+  public async analyzeCodeAsync(
+    code: string,
+    hintClass: string = '',
+    options: AIDetectorOptions = {}
+  ): Promise<AnalysisResult> {
+    const lang = await this.detector.detectLanguage(code, hintClass, options);
+    return this.mapLanguageToTier(lang);
+  }
+
+  private mapLanguageToTier(lang: string): AnalysisResult {
     switch (lang) {
       case 'python':
         return { language: 'python', tier: 'tier1', engine: 'pyodide' };
@@ -30,24 +63,21 @@ export class TierRouter {
       case 'go':
         return { language: lang, tier: 'tier2', engine: 'container2wasm' };
       default:
-        // Default fallback to QuickJS for JavaScript, or Tier 2 container for general scripts
         return { language: 'javascript', tier: 'tier1', engine: 'quickjs' };
     }
   }
 
-  private detectLanguage(code: string, hintClass: string): string {
+  private detectLanguageSync(code: string, hintClass: string): string {
     const hintLower = hintClass.toLowerCase();
 
-    // Check CSS class hints first
-    if (hintLower.includes('python') || hintLower.includes('py')) return 'python';
-    if (hintLower.includes('javascript') || hintLower.includes('js')) return 'javascript';
-    if (hintLower.includes('typescript') || hintLower.includes('ts')) return 'typescript';
-    if (hintLower.includes('bash') || hintLower.includes('sh')) return 'bash';
-    if (hintLower.includes('cpp') || hintLower.includes('c++') || hintLower.includes('c')) return 'cpp';
-    if (hintLower.includes('rust') || hintLower.includes('rs')) return 'rust';
-    if (hintLower.includes('go')) return 'go';
+    if (/\b(python|py|lang-py|language-python)\b/.test(hintLower)) return 'python';
+    if (/\b(javascript|js|typescript|ts)\b/.test(hintLower)) return 'javascript';
+    if (/\b(bash|sh|zsh)\b/.test(hintLower)) return 'bash';
+    if (/\b(cpp|c\+\+|lang-c|language-c)\b/.test(hintLower)) return 'cpp';
+    if (/\b(rust|rs)\b/.test(hintLower)) return 'rust';
+    if (/\b(go|golang)\b/.test(hintLower)) return 'go';
 
-    // Heuristic inspections on code content
+    if (/^\s*(fn\s+main|println!|let\s+mut|pub\s+fn)\b/m.test(code)) return 'rust';
     if (code.includes('#!/bin/bash') || code.includes('#!/bin/sh')) return 'bash';
     if (code.includes('#include <') || code.includes('std::cout')) return 'cpp';
     if (/^\s*(def|import|from)\s+/m.test(code)) return 'python';

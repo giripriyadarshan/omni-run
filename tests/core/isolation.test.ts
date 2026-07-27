@@ -45,7 +45,12 @@ describe('IsolationManager (Chrome Offscreen / COOP-COEP Isolation)', () => {
       executionTimeMs: 15,
     });
 
-    (globalThis as any).chrome.runtime.sendMessage = mockSendMessage;
+    (globalThis as any).chrome = {
+      ...globalThis.chrome,
+      runtime: {
+        sendMessage: mockSendMessage,
+      },
+    };
 
     const payload = {
       engine: 'container2wasm' as const,
@@ -56,7 +61,6 @@ describe('IsolationManager (Chrome Offscreen / COOP-COEP Isolation)', () => {
 
     expect(mockSendMessage).toHaveBeenCalledWith(
       expect.objectContaining({
-        target: 'offscreen',
         type: 'EXECUTE_WASM',
         payload,
       })
@@ -66,7 +70,7 @@ describe('IsolationManager (Chrome Offscreen / COOP-COEP Isolation)', () => {
   });
 
   it('should fallback to direct engine execution when offscreen API is unavailable', async () => {
-    delete (globalThis as any).chrome.offscreen;
+    delete (globalThis as any).chrome;
 
     const payload = {
       engine: 'quickjs' as const,

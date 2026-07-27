@@ -183,6 +183,38 @@ Maintain a single source code repository that compiles cleanly for both Chrome W
 
 ---
 
+### Feature 5: AI-Driven Language Classifier (BYOK & Browser Built-in AI)
+
+#### Concept & Goal
+
+Provide high-accuracy code block language classification when regex heuristics fail or are ambiguous, combining Chrome Built-in AI (`window.ai` Prompt API) and Bring-Your-Own-Key (BYOK) Gemini API fallbacks.
+
+#### Technical Implementation Details
+
+* **Language Detection Fallback Chain:**
+  1. **Regex & CSS Class Rules:** Instant pass for explicit syntax hints (`class="language-rust"`).
+  2. **Browser Built-in AI (`window.ai`):** Runs local inference using Chrome's built-in Gemini Nano model without sending code over the network.
+  3. **BYOK Gemini Fallback:** User-configured Gemini API Key (`gemini-flash-lite-latest`) stored in `browser.storage.local` for cloud inference when local AI is unavailable.
+* **Settings & Consent:**
+  * Toggle options in extension popup UI for user preferred classifier mode (`Auto / Built-in AI / BYOK / Heuristic`).
+
+---
+
+### Feature 6: WASM MCP Server Execution Engine
+
+#### Concept & Goal
+
+Standardize WASM execution provisioning and dynamic button UI rendering using an in-browser Model Context Protocol (MCP) server.
+
+#### Technical Implementation Details
+
+* **In-Browser MCP JSON-RPC Interface:**
+  * Exposes tools: `detect_code_language`, `execute_wasm_runtime`, and `get_button_config`.
+* **Dynamic Action Button Injections:**
+  * Dynamically populates custom button text and runtime metadata (e.g. `[▶ Run Rust in WASM]`, `[▶ Run Pyodide WASM]`) based on MCP tool response.
+
+---
+
 ## 4. Phased Implementation Roadmap
 
 ```
@@ -205,6 +237,11 @@ Phase 4: Optimization, Security Hardening & Store Distribution
  ├── Day 66-72: Benchmark cold vs warm boot latency; optimize OPFS reads.
  ├── Day 73-80: Audit COOP/COEP isolation & worker execution timeouts.
  └── Day 81-90: Package `.zip` (Chrome Store) and `.xpi` (Firefox AMO) releases.
+
+Phase 5: BYOK, Browser Built-in AI & WASM MCP Server Integration
+ ├── Day 91-95: Implement AILanguageDetector with Built-in AI & BYOK Gemini API fallback.
+ ├── Day 96-100: Build in-browser WASMMCPServer JSON-RPC tool handler.
+ └── Day 101-105: Wire WASM MCP server into TierRouter & dynamic button UI rendering.
 ```
 
 ---

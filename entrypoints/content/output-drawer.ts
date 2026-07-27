@@ -130,7 +130,12 @@ export class OutputDrawer {
     this.drawerElement = container;
 
     const header = container.querySelector('.drawer-header');
-    header?.addEventListener('click', () => this.toggleExpand());
+    header?.addEventListener('click', (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      this.toggleExpand();
+    });
 
     return container;
   }

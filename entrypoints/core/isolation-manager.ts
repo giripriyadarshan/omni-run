@@ -39,16 +39,24 @@ export class IsolationManager {
    * Sends code execution payload to offscreen document or falls back to direct runner execution.
    */
   public async executeInIsolation(payload: ExecutionPayload): Promise<ExecutionResult> {
-    if (this.isOffscreenSupported()) {
-      await this.ensureOffscreenDocument();
-      const chromeObj = (globalThis as any).chrome;
-      const result = await chromeObj.runtime.sendMessage({
-        target: 'offscreen',
-        type: 'EXECUTE_WASM',
-        payload,
-      });
+    const cleanPayload: ExecutionPayload = {
+      engine: payload.engine,
+      code: String(payload.code || ''),
+      options: payload.options ? JSON.parse(JSON.stringify(payload.options)) : undefined,
+    };
 
-      if (result) return result;
+    const chromeObj = (globalThis as any).chrome;
+    if (typeof chromeObj !== 'undefined' && chromeObj.runtime?.sendMessage) {
+      try {
+        const result = await chromeObj.runtime.sendMessage({
+          type: 'EXECUTE_WASM',
+          payload: cleanPayload,
+        });
+
+        if (result) return result;
+      } catch (_) {
+        // Fallback to direct execution if message passing fails across sandbox boundaries
+      }
     }
 
     // Direct execution fallback when offscreen API is not available (e.g. Firefox or test mocks)

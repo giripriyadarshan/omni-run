@@ -19,8 +19,33 @@ export async function executeCodeBlockWorkflow(
   const opfs = options.opfsManager || new OPFSManager();
   const isolation = new IsolationManager();
 
-  const code = codeBlock.textContent?.trim() || '';
-  const hintClass = (codeBlock.className || '') + ' ' + (codeBlock.parentElement?.className || '');
+  // Find inner code or pre element if available
+  const innerCodeEl = codeBlock.querySelector<HTMLElement>('code, pre');
+
+  // Clone element to safely remove non-code UI elements (decorations, headers, copy buttons, runner host)
+  const clone = codeBlock.cloneNode(true) as HTMLElement;
+  const noiseSelectors = [
+    '.code-block-decoration',
+    '.code-header',
+    '.omni-run-host',
+    '.copy-code-button',
+    'button',
+  ];
+  noiseSelectors.forEach((selector) => {
+    clone.querySelectorAll(selector).forEach((el) => el.remove());
+  });
+
+  const code = (innerCodeEl ? innerCodeEl.textContent : clone.textContent)?.trim() || '';
+
+  const headerText = codeBlock.querySelector('.code-block-decoration, .code-header')?.textContent || '';
+  const hintClass = [
+    codeBlock.className,
+    codeBlock.getAttribute('language') || '',
+    codeBlock.getAttribute('lang') || '',
+    innerCodeEl?.className || '',
+    codeBlock.parentElement?.className || '',
+    headerText,
+  ].join(' ');
 
   const analysis = router.analyzeCode(code, hintClass);
 
