@@ -20,7 +20,7 @@ jobs:
 
       - name: Install container2wasm
         run: |
-          wget -qO c2w-release.tar.gz https://github.com/ktock/container2wasm/releases/download/v0.8.4/c2w-v0.8.4-linux-amd64.tar.gz
+          wget -qO c2w-release.tar.gz https://github.com/container2wasm/container2wasm/releases/download/v0.8.4/container2wasm-v0.8.4-linux-amd64.tar.gz
           tar -xzf c2w-release.tar.gz c2w
           chmod +x c2w
           sudo mv c2w /usr/local/bin/
