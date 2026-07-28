@@ -49,7 +49,7 @@ jobs:
         run: |
           mkdir -p outdir
           # This compiles the emulator and outputs the .wasm and .data (ext2 filesystem) to outdir/htdocs/
-          c2w --to-js omni-run-linux outdir/
+          c2w --to-js --build-arg SOURCE_REPO=https://github.com/container2wasm/container2wasm omni-run-linux outdir/
 
           # Rename the files to match the expected names in the extension
           # c2w outputs 'qemu-system-x86_64.wasm' or 'c2w-net.wasm' depending on network flags
