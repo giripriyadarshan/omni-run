@@ -146,3 +146,113 @@ export class ConsentModal {
     }
   }
 }
+
+export class AIConfigModal {
+  private hostElement: HTMLElement | null = null;
+
+  public mount(parent: HTMLElement = document.body): HTMLElement {
+    if (this.hostElement && parent.contains(this.hostElement)) {
+      return this.hostElement;
+    }
+
+    this.hostElement = document.createElement('div');
+    this.hostElement.className = 'omni-run-aiconfig-host';
+    parent.appendChild(this.hostElement);
+
+    const shadow = this.hostElement.attachShadow({ mode: 'open' });
+
+    const style = document.createElement('style');
+    style.textContent = `
+      .backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 999999;
+        background: rgba(15, 23, 42, 0.7);
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+      .modal {
+        background: #1e293b;
+        color: #f8fafc;
+        border: 1px solid #334155;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 440px;
+        padding: 24px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+      }
+      .modal-title {
+        margin: 0 0 12px 0;
+        font-size: 17px;
+        font-weight: 700;
+        color: #38bdf8;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .modal-body {
+        font-size: 13px;
+        line-height: 1.6;
+        color: #94a3b8;
+        margin-bottom: 20px;
+      }
+      .actions {
+        display: flex;
+        justify-content: flex-end;
+      }
+      button {
+        font-size: 13px;
+        font-weight: 600;
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        border: none;
+        background: #0284c7;
+        color: #ffffff;
+      }
+      button:hover {
+        opacity: 0.9;
+      }
+    `;
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'backdrop';
+    backdrop.innerHTML = `
+      <div class="modal">
+        <h3 class="modal-title">
+          <span>🔑</span> Gemini API Key Required (BYOK)
+        </h3>
+        <div class="modal-body">
+          <p style="margin-top: 0;">
+            This browser environment (e.g. Firefox) does not feature Chrome Built-in AI (<code style="color:#38bdf8;">window.ai</code>).
+          </p>
+          <p>
+            Please open the <strong>Omni-Run Extension Popup</strong> dashboard and enter your <strong>Gemini API Key</strong> (BYOK) to enable AI-powered language classification and WASM execution.
+          </p>
+        </div>
+        <div class="actions">
+          <button class="btn-ok">Got it</button>
+        </div>
+      </div>
+    `;
+
+    shadow.appendChild(style);
+    shadow.appendChild(backdrop);
+
+    backdrop.querySelector('.btn-ok')?.addEventListener('click', () => {
+      this.unmount();
+    });
+
+    return this.hostElement;
+  }
+
+  public unmount(): void {
+    if (this.hostElement && this.hostElement.parentNode) {
+      this.hostElement.parentNode.removeChild(this.hostElement);
+      this.hostElement = null;
+    }
+  }
+}

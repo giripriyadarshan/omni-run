@@ -95,6 +95,16 @@
       <input type="password" id="byok-api-key" placeholder="Enter Gemini API Key" style="width: 90%; padding: 6px; background: #0f172a; border: 1px solid #334155; color: #f8fafc; border-radius: 4px; margin-bottom: 8px;" />
       <button id="btn-save-byok" class="btn-action" style="background: #0284c7; margin-top: 4px;">Save BYOK Settings</button>
     </div>
+    <div class="card">
+      <div class="card-title">Execution Timeout Limit</div>
+      <select id="timeout-select" style="width: 100%; padding: 6px; background: #0f172a; border: 1px solid #334155; color: #f8fafc; border-radius: 4px;">
+        <option value="10000">10 seconds</option>
+        <option value="30000" selected>30 seconds (Default)</option>
+        <option value="60000">60 seconds (1 min)</option>
+        <option value="120000">120 seconds (2 mins)</option>
+        <option value="300000">300 seconds (5 mins)</option>
+      </select>
+    </div>
     <button id="btn-clear-opfs" class="btn-action">Clear Storage Cache</button>
   </div>
   <script type="module" src="./main.ts"></script>

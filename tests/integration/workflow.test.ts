@@ -4,6 +4,26 @@ import { OPFSManager } from '../../entrypoints/storage/opfs';
 import { executeCodeBlockWorkflow } from '../../entrypoints/content/runner-workflow';
 
 describe('End-to-End WASM Execution Workflow', () => {
+  // Mock PyodideRunner to avoid actual WASM loading in Node.js environment
+  vi.mock('../../entrypoints/workers/pyodide-runner', async (importOriginal) => {
+    const actual = await importOriginal<any>();
+    return {
+      ...actual,
+      PyodideRunner: vi.fn().mockImplementation(() => {
+        return {
+          runCode: vi.fn().mockResolvedValue({
+            success: true,
+            stdout: 'End-to-End Workflow Test\n',
+            stderr: '',
+            executionTimeMs: 10,
+          }),
+          initRuntime: vi.fn().mockResolvedValue(undefined),
+          buildRedirectionWrapper: actual.PyodideRunner.prototype.buildRedirectionWrapper,
+        };
+      }),
+    };
+  });
+
   let scanner: DOMScanner;
   let opfsManager: OPFSManager;
 
@@ -13,6 +33,13 @@ describe('End-to-End WASM Execution Workflow', () => {
         <code id="code-target">print("End-to-End Workflow Test")</code>
       </pre>
     `;
+    (globalThis as any).ai = {
+      languageModel: {
+        create: vi.fn().mockResolvedValue({
+          prompt: vi.fn().mockResolvedValue('{"language": "python"}'),
+        }),
+      },
+    };
     scanner = new DOMScanner();
     opfsManager = new OPFSManager();
     vi.clearAllMocks();

@@ -1,0 +1,48 @@
+name: Build and Publish c2w WebAssembly Kernel
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch: # Allows manual trigger from Actions tab
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed to upload to releases
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install container2wasm
+        run: |
+          wget -qO c2w-release.tar.gz https://github.com/ktock/container2wasm/releases/download/v0.8.4/c2w-v0.8.4-linux-amd64.tar.gz
+          tar -xzf c2w-release.tar.gz c2w
+          chmod +x c2w
+          sudo mv c2w /usr/local/bin/
+
+      - name: Build Omni-Run Linux Docker Image
+        run: |
+          docker build -t omni-run-linux -f .c2w/Dockerfile .
+
+      - name: Convert to WebAssembly Split bundle
+        run: |
+          mkdir -p outdir
+          # This compiles the emulator and outputs the .wasm and .data (ext2 filesystem) to outdir/htdocs/
+          c2w --to-js omni-run-linux outdir/
+          
+          # Rename the files to match the expected names in the extension
+          # c2w outputs 'qemu-system-x86_64.wasm' or 'c2w-net.wasm' depending on network flags
+          mv outdir/htdocs/*.wasm c2w_kernel.wasm
+          mv outdir/htdocs/*.data c2w_disk.ext2
+
+      - name: Upload binaries to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            c2w_kernel.wasm
+            c2w_disk.ext2

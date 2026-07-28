@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ConsentModal } from '@/entrypoints/content/consent-modal';
+import { ConsentModal, AIConfigModal } from '@/entrypoints/content/consent-modal';
 
 describe('ConsentModal - User Consent UI Component inside Shadow DOM', () => {
   beforeEach(() => {
@@ -66,6 +66,21 @@ describe('ConsentModal - User Consent UI Component inside Shadow DOM', () => {
 
     cancelBtn?.click();
     expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(document.body.contains(host)).toBe(false);
+  });
+
+  it('should render AIConfigModal popup when BYOK API key is required (e.g. Firefox)', () => {
+    const modal = new AIConfigModal();
+    const host = modal.mount(document.body);
+
+    expect(host.shadowRoot).not.toBeNull();
+    const titleEl = host.shadowRoot?.querySelector('.modal-title');
+    expect(titleEl?.textContent).toContain('Gemini API Key Required (BYOK)');
+
+    const btn = host.shadowRoot?.querySelector<HTMLButtonElement>('.btn-ok');
+    expect(btn).not.toBeNull();
+
+    btn?.click();
     expect(document.body.contains(host)).toBe(false);
   });
 });

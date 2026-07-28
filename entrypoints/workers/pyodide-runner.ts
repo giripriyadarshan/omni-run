@@ -48,14 +48,12 @@ __omni_err_val = __omni_stderr.getvalue()
     }
 
     if (typeof (globalThis as any).loadPyodide !== 'function') {
-      const isJsdom = typeof navigator !== 'undefined' && navigator.userAgent?.toLowerCase().includes('jsdom');
-      const isHostPage = typeof location !== 'undefined' && !location.href.startsWith('chrome-extension://') && !location.href.startsWith('moz-extension://');
-
-      if (typeof document !== 'undefined' && !isJsdom && !isHostPage) {
+      const chromeObj = (globalThis as any).chrome;
+      if (chromeObj && chromeObj.runtime && chromeObj.runtime.getURL) {
         try {
           await new Promise<void>((resolve) => {
             const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js';
+            script.src = chromeObj.runtime.getURL('/pyodide/pyodide.js');
             const timeout = setTimeout(() => resolve(), 2000);
             script.onload = () => {
               clearTimeout(timeout);
@@ -72,8 +70,13 @@ __omni_err_val = __omni_stderr.getvalue()
     }
 
     if (typeof (globalThis as any).loadPyodide === 'function') {
+      let indexUrl = '/pyodide/';
+      const chromeObj = (globalThis as any).chrome;
+      if (chromeObj && chromeObj.runtime && chromeObj.runtime.getURL) {
+        indexUrl = chromeObj.runtime.getURL('/pyodide/');
+      }
       this.pyodideInstance = await (globalThis as any).loadPyodide({
-        indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/',
+        indexURL: indexUrl,
       });
     }
   }

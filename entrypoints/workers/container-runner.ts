@@ -1,4 +1,6 @@
 import { ExecutionResult } from './pyodide-runner';
+import { Ext2BlockStreamer } from '../storage/ext2-streamer';
+import { OPFSManager } from '../storage/opfs';
 
 export interface ContainerRunOptions {
   containerImage?: string;
@@ -9,7 +11,7 @@ export interface ContainerRunOptions {
 export class ContainerRunner {
   private defaultTimeoutMs: number;
 
-  constructor(defaultTimeoutMs: number = 10000) {
+  constructor(defaultTimeoutMs: number = 30000) {
     this.defaultTimeoutMs = defaultTimeoutMs;
   }
 
@@ -40,29 +42,43 @@ export class ContainerRunner {
         await new Promise((resolve) => setTimeout(resolve, options.simulatedDelayMs));
       }
 
-      // Check for command errors or timeout syntax in simulation
-      if (code.includes('command_that_does_not_exist')) {
-        const executionTimeMs = performance.now() - startTime;
-        const errStr = 'bash: line 1: command_that_does_not_exist_xyz: command not found';
-        return {
-          success: false,
-          stdout: '',
-          stderr: errStr,
-          error: errStr,
-          executionTimeMs,
-        };
+      // --- MOCK WASM ENGINE INTEGRATION ---
+      // This section simulates booting the container2wasm Linux kernel using the 
+      // Ext2BlockStreamer for lazy-loading disk chunks.
+      const kernelUrl = options.containerImage || 'https://github.com/giripriyadarshan/omni-run/releases/latest/download/c2w_kernel.wasm';
+      const diskUrl = 'https://github.com/giripriyadarshan/omni-run/releases/latest/download/c2w_disk.ext2';
+
+      const streamer = new Ext2BlockStreamer(diskUrl);
+      const opfs = new OPFSManager();
+
+      // MOCK: Attempt to fetch kernel header (will fail gracefully since binary is not uploaded yet)
+      try {
+        const fetchRes = await fetch(kernelUrl, { method: 'HEAD' });
+        if (!fetchRes.ok) {
+          throw new Error('Kernel binary not found on CDN.');
+        }
+      } catch (err) {
+         const errMsg = '[WASM Boot Failed] The container2wasm kernel binary is not yet available on the GitHub Releases CDN. Please upload the compiled kernel to enable execution for C, Rust, Go, and Bash.';
+         return {
+           success: false,
+           stdout: '',
+           stderr: errMsg,
+           error: errMsg,
+           executionTimeMs: performance.now() - startTime,
+         };
       }
 
-      // Evaluate output for container command or code execution
-      const stdout = this.evaluateContainerOutput(code);
-
-      const executionTimeMs = performance.now() - startTime;
+      // If the kernel fetch succeeded, we would initialize WASM here:
+      // const memory = new WebAssembly.Memory({ initial: 256, maximum: 16384, shared: true });
+      // const importObject = { ...WASI_mock, block_device: { read: (offset, len) => streamer.fetchBlockSync(...) }};
+      // const { instance } = await WebAssembly.instantiateStreaming(fetch(kernelUrl), importObject);
+      // instance.exports._start();
 
       return {
         success: true,
-        stdout,
+        stdout: 'Mock execution succeeded.',
         stderr: '',
-        executionTimeMs,
+        executionTimeMs: performance.now() - startTime,
       };
     } catch (err: any) {
       const executionTimeMs = performance.now() - startTime;
@@ -75,147 +91,5 @@ export class ContainerRunner {
         executionTimeMs,
       };
     }
-  }
-
-  private evaluateContainerOutput(code: string): string {
-    const outputs: string[] = [];
-
-    // 1. Check for Rust println! / print!
-    const rustMatches = [...code.matchAll(/print(?:ln)?!\s*\(\s*"((?:[^"\\]|\\.)*)"(?:\s*,\s*([\s\S]*?))?\s*\);?/g)];
-    if (rustMatches.length > 0) {
-      for (const m of rustMatches) {
-        let fmtStr = m[1].replace(/\\n/g, '\n').replace(/\\t/g, '\t');
-        let argsStr = m[2] ? m[2].trim() : '';
-        if (argsStr.endsWith(')')) {
-          argsStr = argsStr.slice(0, -1).trim();
-        }
-
-        if (argsStr) {
-          const args = argsStr.split(',').map((a) => a.trim());
-          for (const arg of args) {
-            let evalVal = arg;
-            if (arg === 'rect' || arg.includes('rect')) {
-              evalVal = 'Rectangle { width: 30, height: 50 }';
-            }
-            if (arg.includes('area')) {
-              evalVal = '1500';
-            } else if (arg.includes('can_hold(&rect2)')) {
-              evalVal = 'true';
-            } else if (arg.includes('can_hold(&rect3)')) {
-              evalVal = 'false';
-            }
-
-            if (fmtStr.includes('{:?}')) {
-              fmtStr = fmtStr.replace('{:?}', evalVal);
-            } else {
-              fmtStr = fmtStr.replace('{}', evalVal);
-            }
-          }
-        }
-
-        outputs.push(fmtStr);
-      }
-      return outputs.join('\n') + '\n';
-    }
-
-    // 2. Check for C / C++ printf / puts / std::cout
-    if (code.includes('#include') || code.includes('printf(')) {
-      let num = 7;
-      let fact = 5040;
-      let threshold = 1000;
-
-      // Extract number if defined
-      const numMatch = code.match(/number\s*=\s*(\d+)/);
-      if (numMatch) {
-        num = parseInt(numMatch[1], 10);
-        fact = 1;
-        for (let i = 1; i <= num; i++) fact *= i;
-      }
-
-      // Extract THRESHOLD if defined
-      const threshMatch = code.match(/THRESHOLD\s*=\s*(\d+)/);
-      if (threshMatch) {
-        threshold = parseInt(threshMatch[1], 10);
-      }
-
-      // Process main block lines sequentially adhering to control flow (if/else)
-      const lines = code.split('\n');
-      let inTrueIf = false;
-      let inFalseIf = false;
-
-      for (let line of lines) {
-        const trimmed = line.trim();
-
-        // Control flow check for if (result > THRESHOLD) or if (n < 0)
-        if (trimmed.startsWith('if (')) {
-          if (trimmed.includes('result > THRESHOLD') || trimmed.includes('>')) {
-            inTrueIf = fact > threshold;
-            inFalseIf = !inTrueIf;
-          }
-          continue;
-        }
-
-        if (trimmed.startsWith('else')) {
-          const temp = inTrueIf;
-          inTrueIf = inFalseIf;
-          inFalseIf = temp;
-          continue;
-        }
-
-        if (inFalseIf) continue;
-
-        const printfMatch = trimmed.match(/printf\s*\(\s*"((?:[^"\\]|\\.)*)"(?:\s*,\s*([\s\S]*?))?\s*\);?/);
-        if (printfMatch) {
-          let fmtStr = printfMatch[1].replace(/\\n/g, '').replace(/\\t/g, '\t');
-          const argsStr = printfMatch[2] ? printfMatch[2].trim() : '';
-
-          if (argsStr) {
-            const args = argsStr.split(',').map((a) => a.trim());
-            for (const arg of args) {
-              let val = arg;
-              if (arg === 'number' || arg.includes('number')) val = String(num);
-              else if (arg === 'result' || arg.includes('result') || arg.includes('factorial')) val = String(fact);
-              else if (arg === 'THRESHOLD' || arg.includes('THRESHOLD')) val = String(threshold);
-              else if (arg === 'radius') val = '5.00';
-              else if (arg === 'area') val = '78.54';
-              else if (arg === 'circumference') val = '31.42';
-
-              fmtStr = fmtStr.replace(/%[.\d]*[a-zA-Z]+/ , val);
-            }
-          }
-          outputs.push(fmtStr);
-        }
-      }
-
-      if (outputs.length > 0) {
-        return outputs.join('\n') + '\n';
-      }
-    }
-
-    const coutMatches = [...code.matchAll(/std::cout\s*<<\s*"((?:[^"\\]|\\.)*)"/g)];
-    if (coutMatches.length > 0) {
-      for (const m of coutMatches) {
-        outputs.push(m[1].replace(/\\n/g, '').replace(/\\t/g, '\t'));
-      }
-      return outputs.join('\n') + '\n';
-    }
-
-    // 3. Check for Shell echo
-    if (code.startsWith('echo ')) {
-      const matched = code.match(/echo\s+["']?(.*?)["']?$/);
-      return matched ? matched[1] + '\n' : code.replace('echo ', '') + '\n';
-    }
-
-    // 4. Check for Python / JS print or console.log
-    const printLogMatches = [...code.matchAll(/(?:print|console\.log)\s*\(\s*["']((?:[^"'\\]|\\.)*)["']\s*\);?/g)];
-    if (printLogMatches.length > 0) {
-      for (const m of printLogMatches) {
-        outputs.push(m[1].replace(/\\n/g, '\n'));
-      }
-      return outputs.join('\n') + '\n';
-    }
-
-    // Fallback if no explicit print pattern matched
-    return `[container2wasm] Executed:\n${code}\n`;
   }
 }

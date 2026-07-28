@@ -15,6 +15,12 @@ Do NOT include any markdown block formatting, explanations, or extra text.
 Code Snippet:
 `;
 
+  public static hasBuiltinAI(): boolean {
+    const aiGlobal = (globalThis as any).ai || (typeof window !== 'undefined' ? (window as any).ai : undefined);
+    const lmGlobal = aiGlobal?.languageModel || aiGlobal?.assistant || (globalThis as any).LanguageModel;
+    return Boolean(aiGlobal || lmGlobal);
+  }
+
   /**
    * Detects the programming language of a code block purely using Chrome Built-in AI
    * (window.ai Prompt API) or BYOK Gemini API (gemini-flash-lite-latest).
@@ -26,16 +32,71 @@ Code Snippet:
   ): Promise<string> {
     const trimmedCode = code.trim().slice(0, 800);
 
-    // 1. Browser Built-in AI (window.ai Prompt API)
-    if (options.preferredMode !== 'byok' && typeof (globalThis as any).ai !== 'undefined') {
+    // 1. Superior BYOK Gemini API (gemini-flash-lite-latest) takes priority when configured
+    if (options.apiKey) {
       try {
-        const session = await (globalThis as any).ai.languageModel.create();
-        const promptText = `${AILanguageDetector.SYSTEM_PROMPT}\n${trimmedCode}`;
-        const response = await session.prompt(promptText);
-        const parsed = this.parseAIResponse(response);
-        if (parsed) return parsed;
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${options.apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    {
+                      text: `${AILanguageDetector.SYSTEM_PROMPT}\n${trimmedCode}`,
+                    },
+                  ],
+                },
+              ],
+            }),
+          }
+        );
+
+        if (res.ok) {
+          const data = await res.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          const parsed = this.parseAIResponse(text);
+          if (parsed) return parsed;
+        }
       } catch (err) {
-        // Fallthrough to BYOK
+        // Fallthrough to built-in AI
+      }
+    }
+
+    // 2. Browser Built-in AI (Chrome window.ai / LanguageModel API)
+    const aiGlobal = (globalThis as any).ai || (typeof window !== 'undefined' ? (window as any).ai : undefined);
+    const lmGlobal = aiGlobal?.languageModel || aiGlobal?.assistant || (globalThis as any).LanguageModel;
+
+    if (options.preferredMode !== 'byok' && (aiGlobal || lmGlobal)) {
+      try {
+        let session: any = null;
+        if (lmGlobal && typeof lmGlobal.create === 'function') {
+          try {
+            session = await lmGlobal.create({ systemPrompt: AILanguageDetector.SYSTEM_PROMPT });
+          } catch (_) {
+            session = await lmGlobal.create();
+          }
+        } else if (aiGlobal && typeof aiGlobal.create === 'function') {
+          try {
+            session = await aiGlobal.create({ systemPrompt: AILanguageDetector.SYSTEM_PROMPT });
+          } catch (_) {
+            session = await aiGlobal.create();
+          }
+        } else if (aiGlobal && typeof aiGlobal.prompt === 'function') {
+          const response = await aiGlobal.prompt(`${AILanguageDetector.SYSTEM_PROMPT}\n${trimmedCode}`);
+          const parsed = this.parseAIResponse(response);
+          if (parsed) return parsed;
+        }
+
+        if (session && typeof session.prompt === 'function') {
+          const response = await session.prompt(`${AILanguageDetector.SYSTEM_PROMPT}\n${trimmedCode}`);
+          const parsed = this.parseAIResponse(response);
+          if (parsed) return parsed;
+        }
+      } catch (err) {
+        // Fallthrough to fallback
       }
     }
 

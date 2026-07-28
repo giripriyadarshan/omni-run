@@ -10,7 +10,7 @@ export class Ext2BlockStreamer {
   private blockSizeBytes: number;
 
   constructor(
-    imageUrl: string = 'https://cdn.omni-run.org/c2w_disk.ext2',
+    imageUrl: string = 'https://github.com/giripriyadarshan/omni-run/releases/latest/download/c2w_disk.ext2',
     blockSizeBytes: number = 4096
   ) {
     this.imageUrl = imageUrl;
@@ -66,5 +66,28 @@ export class Ext2BlockStreamer {
     const fetched = await this.fetchBlock(blockIndex, customFetch);
     await opfsManager.storeAsset(assetName, fetched);
     return fetched;
+  }
+
+  /**
+   * Synchronously reads a block. MUST be run inside a Dedicated Web Worker.
+   * Utilizes synchronous XMLHttpRequest to fetch missing ranges.
+   */
+  public fetchBlockSync(blockIndex: number): ArrayBuffer {
+    if (typeof window !== 'undefined' && typeof window.document !== 'undefined') {
+        throw new Error('fetchBlockSync must be called from a Dedicated Web Worker to support synchronous XHR/Atomics.');
+    }
+
+    const { startByte, endByte } = this.calculateByteRange(blockIndex);
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', this.imageUrl, false); // synchronous
+    xhr.setRequestHeader('Range', `bytes=${startByte}-${endByte}`);
+    xhr.responseType = 'arraybuffer';
+    xhr.send(null);
+
+    if (xhr.status !== 206 && xhr.status !== 200) {
+      throw new Error(`Sync fetch failed for Ext2 block ${blockIndex}: Status ${xhr.status}`);
+    }
+
+    return xhr.response as ArrayBuffer;
   }
 }

@@ -3,7 +3,7 @@ import { ExecutionResult } from './pyodide-runner';
 export class QuickJSRunner {
   private timeoutMs: number;
 
-  constructor(timeoutMs: number = 5000) {
+  constructor(timeoutMs: number = 30000) {
     this.timeoutMs = timeoutMs;
   }
 

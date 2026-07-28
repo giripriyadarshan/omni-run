@@ -3,6 +3,13 @@ import { QuickJSRunner } from './quickjs-runner';
 import { ContainerRunner } from './container-runner';
 import { ExecutionPayload } from '../core/isolation-manager';
 
+// Security Hardening: Audit COOP/COEP Isolation for WASM Threading
+if (typeof SharedArrayBuffer === 'undefined') {
+  console.warn('[Omni-Run Audit] SharedArrayBuffer is UNDEFINED. COOP/COEP headers are likely missing. Tier 2 WASM threading will fail.');
+} else {
+  console.log('[Omni-Run Audit] SharedArrayBuffer is active. COOP/COEP isolation verified.');
+}
+
 // Offscreen message listener
 if (typeof (globalThis as any).chrome !== 'undefined' && (globalThis as any).chrome.runtime?.onMessage) {
   (globalThis as any).chrome.runtime.onMessage.addListener(

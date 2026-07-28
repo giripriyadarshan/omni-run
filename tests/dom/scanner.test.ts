@@ -78,4 +78,22 @@ describe('DOMScanner - Code Block Detection & Debouncer Engine', () => {
     vi.advanceTimersByTime(300);
     expect(onFinishedStreaming).toHaveBeenCalledTimes(1);
   });
+
+  it('should re-trigger AI code detection for all blocks when reDetectAll is called with BYOK key', async () => {
+    document.body.innerHTML = `
+      <pre id="target-block"><code class="language-rust">fn main() { println!("Hello"); }</code></pre>
+    `;
+
+    const targetBlock = document.getElementById('target-block')!;
+    const scanner = new DOMScanner();
+    const shadowHost = scanner.injectRunnerUI(targetBlock);
+
+    await vi.runAllTimersAsync();
+
+    await scanner.reDetectAll('mock-gemini-byok-key');
+    await vi.runAllTimersAsync();
+
+    const button = shadowHost.shadowRoot?.querySelector('button');
+    expect(button?.textContent).toContain('Run Rust in WASM');
+  });
 });

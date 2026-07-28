@@ -1,8 +1,10 @@
 import { TierRouter } from '../core/router';
 import { OPFSManager } from '../storage/opfs';
-import { ConsentModal } from './consent-modal';
+import { ConsentModal, AIConfigModal } from './consent-modal';
 import { OutputDrawer } from './output-drawer';
 import { IsolationManager } from '../core/isolation-manager';
+
+import { AILanguageDetector } from '../core/ai-detector';
 
 export interface WorkflowOptions {
   autoConfirmConsent?: boolean;
@@ -18,6 +20,30 @@ export async function executeCodeBlockWorkflow(
   const router = new TierRouter();
   const opfs = options.opfsManager || new OPFSManager();
   const isolation = new IsolationManager();
+
+  // Check BYOK API Key and custom Execution Timeout from local storage
+  let apiKey = '';
+  let timeoutMs = 30000;
+  if (typeof (globalThis as any).chrome?.storage?.local?.get === 'function') {
+    try {
+      const res = await Promise.race([
+        new Promise<any>((resolve) => {
+          (globalThis as any).chrome.storage.local.get(['geminiApiKey', 'executionTimeoutMs'], (r: any) => resolve(r));
+        }),
+        new Promise<any>((resolve) => setTimeout(() => resolve(null), 100)),
+      ]);
+      apiKey = res?.geminiApiKey || '';
+      if (res?.executionTimeoutMs) timeoutMs = parseInt(res.executionTimeoutMs, 10);
+    } catch (_) {}
+  }
+
+  const hasBuiltinAI = AILanguageDetector.hasBuiltinAI();
+  if (!hasBuiltinAI && !apiKey) {
+    // Firefox / browser without built-in AI: show AIConfigModal popup
+    const modal = new AIConfigModal();
+    modal.mount(document.body);
+    return;
+  }
 
   // Find inner code or pre element if available
   const innerCodeEl = codeBlock.querySelector<HTMLElement>('code, pre');
@@ -47,7 +73,7 @@ export async function executeCodeBlockWorkflow(
     headerText,
   ].join(' ');
 
-  const analysis = router.analyzeCode(code, hintClass);
+  const analysis = await router.analyzeCode(code, hintClass, { apiKey });
 
   let assetName = 'quickjs.wasm';
   let sizeMB = 0.8;
@@ -97,13 +123,13 @@ export async function executeCodeBlockWorkflow(
     await opfs.storeAsset(assetName, new ArrayBuffer(1024));
   }
 
-  // Initialize or locate OutputDrawer inside Shadow DOM
-  let drawerElement = shadowRoot.querySelector<HTMLElement>('.omni-run-drawer');
-  const drawer = new OutputDrawer();
-  if (!drawerElement) {
+  // Locate or initialize singleton OutputDrawer on Shadow DOM host
+  let drawer: OutputDrawer = (shadowRoot as any).__omniDrawer;
+  if (!drawer) {
+    drawer = new OutputDrawer();
     drawer.mount(shadowRoot);
+    (shadowRoot as any).__omniDrawer = drawer;
   } else {
-    // Re-bind drawer instance wrapper methods if host exists
     drawer.mount(shadowRoot);
   }
 
@@ -113,6 +139,7 @@ export async function executeCodeBlockWorkflow(
     const result = await isolation.executeInIsolation({
       engine: analysis.engine,
       code,
+      options: { timeoutMs },
     });
 
     if (result.success) {

@@ -61,14 +61,25 @@ export async function initPopupUI(
 
   const byokInput = doc.getElementById('byok-api-key') as HTMLInputElement | null;
   const saveByokBtn = doc.getElementById('btn-save-byok') as HTMLButtonElement | null;
+  const timeoutSelect = doc.getElementById('timeout-select') as HTMLSelectElement | null;
 
   if (typeof (globalThis as any).chrome !== 'undefined' && (globalThis as any).chrome.storage?.local) {
-    (globalThis as any).chrome.storage.local.get(['geminiApiKey'], (res: any) => {
+    (globalThis as any).chrome.storage.local.get(['geminiApiKey', 'executionTimeoutMs'], (res: any) => {
       if (res?.geminiApiKey && byokInput) {
         byokInput.value = res.geminiApiKey;
       }
+      if (res?.executionTimeoutMs && timeoutSelect) {
+        timeoutSelect.value = String(res.executionTimeoutMs);
+      }
     });
   }
+
+  timeoutSelect?.addEventListener('change', () => {
+    const timeoutMs = parseInt(timeoutSelect.value, 10);
+    if (typeof (globalThis as any).chrome !== 'undefined' && (globalThis as any).chrome.storage?.local) {
+      (globalThis as any).chrome.storage.local.set({ executionTimeoutMs: timeoutMs });
+    }
+  });
 
   saveByokBtn?.addEventListener('click', () => {
     const key = byokInput?.value?.trim() || '';

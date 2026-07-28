@@ -6,6 +6,8 @@ node_modules/
 .wxt/
 dist/
 build/
+public/
+outdir/
 
 # Logs
 npm-debug.log*
