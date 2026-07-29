@@ -53,8 +53,8 @@ jobs:
 
           # Rename the files to match the expected names in the extension
           # c2w outputs 'qemu-system-x86_64.wasm' or 'c2w-net.wasm' depending on network flags
-          mv outdir/htdocs/*.wasm c2w_kernel.wasm
-          mv outdir/htdocs/*.data c2w_disk.ext2
+          mv outdir/*.wasm c2w_kernel.wasm
+          mv outdir/*.data c2w_disk.ext2
 
       - name: Upload binaries to Release
         uses: softprops/action-gh-release@v2
