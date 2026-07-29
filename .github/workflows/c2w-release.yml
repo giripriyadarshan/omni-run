@@ -3,7 +3,12 @@ name: Build and Publish c2w WebAssembly Kernel
 on:
   release:
     types: [published]
-  workflow_dispatch: # Allows manual trigger from Actions tab
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag to attach release to (e.g., v1.0.0)'
+        required: true
+        type: string
 
 jobs:
   build-and-publish:
@@ -59,6 +64,7 @@ jobs:
       - name: Upload binaries to Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
           files: |
             c2w_kernel.wasm
             c2w_disk.ext2
