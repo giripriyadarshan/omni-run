@@ -25,7 +25,7 @@ jobs:
         with:
           # this might remove tools that are actually needed,
           # if set to "true" but frees about 6 GB
-          tool-cache: false
+          tool-cache: true
 
           # all of these default to true, but feel free to set to
           # "false" if necessary for your workflow
@@ -45,10 +45,15 @@ jobs:
           tar -xzf c2w-release.tar.gz c2w
           chmod +x c2w
           sudo mv c2w /usr/local/bin/
+          rm -f c2w-release.tar.gz
 
       - name: Build Omni-Run Linux Docker Image
         run: |
           docker build -t omni-run-linux -f .c2w/Dockerfile .
+
+      - name: Prune Docker Builder Cache
+        run: |
+          docker builder prune -f
 
       - name: Convert to WebAssembly Split bundle
         run: |
