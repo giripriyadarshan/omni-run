@@ -24,7 +24,7 @@
     "@types/webextension-polyfill": "^0.12.1",
     "jsdom": "^26.0.0",
     "typescript": "^5.7.3",
-    "vitest": "^3.0.4",
-    "wxt": "^0.19.16"
+    "vitest": "^5.1.0",
+    "wxt": "^0.21.5"
   }
 }
